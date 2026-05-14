@@ -54,6 +54,11 @@ Transform tasks into verifiable goals:
 For multi-step tasks, state a brief plan + verification per step.
 Self-applied Audit Level 2 BEFORE declaring task complete.
 
+## Test-first execution (G7)
+- For each DoD bullet: write the verification command BEFORE the code change.
+- Run it, capture failure output. Then implement minimal fix.
+- Re-run, capture success output. Both outputs in commit message footer.
+
 ---
 
 ## Project rules — GreenReceipt V1.0
