@@ -19,6 +19,14 @@ export const de = {
     instruction: 'Den erkannten Text bei Bedarf anpassen.',
     placeholder: 'Aussage eingeben …',
     classifyButton: 'Klassifizieren',
+    classifying: 'Wird klassifiziert …',
+    error: {
+      title: 'Fehler',
+      retry: 'Erneut versuchen',
+      network: 'Netzwerkfehler. Bitte erneut versuchen.',
+      parse: 'Ungültige Antwort vom Server.',
+      rateLimited: 'Tageslimit erreicht. Versuche es morgen.',
+    },
   },
   verdict: {
     heading: 'Ergebnis',

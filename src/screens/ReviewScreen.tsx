@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,11 +12,38 @@ import {
 import { palette, fonts } from '../theme/chemtrace';
 import { de } from '../locales/de';
 import type { RootStackScreenProps } from '../types/navigation';
+import { classify } from '../services/classify';
+import { getOrCreateDeviceId } from '../services/deviceId';
 
 export default function ReviewScreen({
   route,
+  navigation,
 }: RootStackScreenProps<'Review'>) {
   const [text, setText] = useState(route.params.ocrText);
+  const [loading, setLoading] = useState(false);
+
+  const onClassify = async () => {
+    setLoading(true);
+    try {
+      const deviceId = await getOrCreateDeviceId();
+      const verdict = await classify(text, deviceId);
+      navigation.navigate('Verdict', { verdict });
+    } catch (e) {
+      // TODO T3: refine via `e instanceof z.ZodError` + Supabase FunctionsHttpError.context.response.status === 429.
+      // For T2 mock-only path, this fallback chain is acceptable (mock never throws).
+      const msg =
+        e instanceof Error && e.message.includes('429')
+          ? de.review.error.rateLimited
+          : e instanceof Error && /parse|Zod/i.test(e.message)
+            ? de.review.error.parse
+            : de.review.error.network;
+      Alert.alert(de.review.error.title, msg, [
+        { text: de.review.error.retry, onPress: onClassify },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ScrollView
@@ -31,9 +60,23 @@ export default function ReviewScreen({
         multiline
         placeholder={de.review.placeholder}
         placeholderTextColor={palette.creamDim}
+        editable={!loading}
       />
-      <Pressable style={[styles.primaryButton, styles.primaryButtonDisabled]} disabled>
-        <Text style={styles.primaryButtonText}>{de.review.classifyButton}</Text>
+      <Pressable
+        style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
+        onPress={onClassify}
+        disabled={loading}
+        accessibilityLabel={
+          loading ? de.review.classifying : de.review.classifyButton
+        }
+      >
+        {loading ? (
+          <ActivityIndicator color={palette.bg} />
+        ) : (
+          <Text style={styles.primaryButtonText}>
+            {de.review.classifyButton}
+          </Text>
+        )}
       </Pressable>
       <View style={styles.spacer} />
     </ScrollView>
