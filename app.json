@@ -21,7 +21,11 @@
         "backgroundColor": "#0E131C"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,6 +38,11 @@
           "cameraPermission": "GreenReceipt benötigt Kamerazugriff, um Verpackungsaussagen zu scannen."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f0aedcd6-2eb7-4fbd-a646-dfcc17b74be5"
+      }
+    }
   }
 }
