@@ -96,7 +96,7 @@ react-native-screens · react-native-safe-area-context ·
 ### Model routing (Edge Function)
 - Primary: `gpt-5-nano` via `OPENAI_MODEL` env
 - Fallback: `gpt-4.1-nano` (env swap, no redeploy)
-- `temperature=0.2`, `max_tokens=300`, `response_format=json_schema strict`
+- `temperature=0.2`, `max_tokens=1200`, `response_format=json_schema strict`
 
 ### On blocker
 STOP + escalate to Sebas. NO shortcut rationalization.

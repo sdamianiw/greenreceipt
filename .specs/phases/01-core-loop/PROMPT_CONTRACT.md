@@ -43,7 +43,7 @@ Function backed by OpenAI gpt-5-nano (primary) o gpt-4.1-nano (fallback).
 - REQ-A-01: Stack whitelist 14 deps locked (see CONSTRAINTS); no additions without audited approval.
 - REQ-A-02: 6 screens total V1.0; navigator stack rejects 7th.
 - REQ-A-03: Model primary `gpt-5-nano`, fallback `gpt-4.1-nano` via `OPENAI_MODEL` Supabase secret; default if unset = `gpt-5-nano`.
-- REQ-A-04: LLM params locked: temperature=0.2, max_tokens=300, response_format=json_schema strict.
+- REQ-A-04: LLM params locked: temperature=0.2, max_tokens=1200, response_format=json_schema strict.
 - REQ-A-05: System prompt + fewshots in separate files (`src/prompts/system_de.ts`, `src/prompts/fewshots_de.json`), mirrored into `supabase/functions/classify/`.
 - REQ-A-06: Anonymous flow only; no login screen, no Supabase auth; anon API key client-side.
 
@@ -104,7 +104,7 @@ por Sebas. AsyncStorage, react-native-mmkv, native auth libs PROHIBIDOS V1.0.
 - Selection via env var: `OPENAI_MODEL` in Supabase secrets.
   Default if unset: `gpt-5-nano`.
 - temperature: 0.2 (low variance, classification consistency).
-- max_tokens: 300 (cost cap, prevents output runaway).
+- max_tokens: 1200 (cost cap, prevents output runaway).
 - response_format: strict json_schema (see src/types/verdict.ts).
 - CONSERVATIVE BIAS in prompt: if uncertain → downgrade verdict.
 - System prompt LOCKED in `src/prompts/system_de.ts` (NOT inline in Edge Function).
@@ -310,7 +310,7 @@ serve(async (req) => {
   const completion = await openai.chat.completions.create({
     model,
     temperature: 0.2,
-    max_tokens: 300,
+    max_tokens: 1200,
     response_format: VERDICT_SCHEMA,
     messages: [
       { role: "system", content: SYSTEM_PROMPT_DE },
@@ -373,7 +373,7 @@ Phase 01 FAILS if ANY of these conditions met:
 8. Más de 6 screens en navigator stack. (viola REQ-A-02)
 9. Forbidden wording en system prompt, fewshots, UI, or any output. (viola REQ-S-04)
 10. Total Phase 01 time >5h (hard stop). (viola REQ-NF-03)
-11. temperature != 0.2 OR max_tokens > 300 en Edge Function. (viola REQ-A-04)
+11. temperature != 0.2 OR max_tokens > 1200 en Edge Function. (viola REQ-A-04)
 12. System prompt or few-shots hardcoded inline en Edge Function code (deben ser archivos separados importados). (viola REQ-A-05)
 13. OPENAI_MODEL hardcoded sin fallback default a "gpt-5-nano". (viola REQ-A-03)
 14. Falta validación UUID v4 format en Edge Function device_id input. (viola REQ-S-05)

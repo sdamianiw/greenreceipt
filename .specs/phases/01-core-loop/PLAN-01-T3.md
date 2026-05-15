@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
   const resp = await oa.responses.create({
     model: MODEL,
     input: [{ role: "system", content: systemPrompt }, ...fewshots, { role: "user", content: ocr_text }],
-    max_output_tokens: 300,
+    max_output_tokens: 1200,
     text: { format: { type: "json_schema", name: "VerdictResponse", schema: VerdictSchema, strict: true } }
     // temperature 0.2: include if supported by gpt-5 Responses; verify empírico T3.2 step 4 (R7)
   });
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
 1. `supabase functions serve classify --env-file ./supabase/.env.local` (local con secrets injected) → server up port 54321.
 2. `curl -X POST http://localhost:54321/functions/v1/classify -H "Authorization: Bearer $ANON" -d '{"ocr_text":"100% biologisch abbaubar","device_id":"<uuid v4>"}'` → 200 + JSON con verdict + confidence + tokens_used > 0.
 3. `for i in 1 2 3 4; do curl ... same device_id; done` → calls 1-3 = 200, call 4 = 429.
-4. **Empirical check temperature:** si OpenAI Responses rechaza `temperature` param para gpt-5-nano → remove + commit note (REQ-A-04 amendment: "params locked: max_output_tokens=300, response_format=json_schema strict; temperature pending gpt-5 API support" con sign-off Sebas).
+4. **Empirical check temperature:** si OpenAI Responses rechaza `temperature` param para gpt-5-nano → remove + commit note (REQ-A-04 amendment: "params locked: max_output_tokens=1200, response_format=json_schema strict; temperature pending gpt-5 API support" con sign-off Sebas).
 5. `grep -R "image_url\|claim_text" supabase/functions/` → 0 (S-02, S-03).
 6. `grep -Ei "greenwashing|illegal|illegale|betrug|fraud|lüge|lügen|schuldig|guilty|verbrauchertäuschung|irreführende werbung" supabase/functions/ src/prompts/` → 0 (S-04).
 7. `supabase functions deploy classify` → deploy OK.
@@ -137,13 +137,13 @@ Deno.serve(async (req) => {
 **REQ trace:**
 - F-04 (Responses `json_schema` strict + client Zod parse)
 - F-05 (response shape: verdict + confidence + reasoning + evidence + model_used + tokens_used; render verify in T3.3)
-- NF-01 (P95 <8s — `max_output_tokens 300` + gpt-5-nano latency profile)
+- NF-01 (P95 <8s — `max_output_tokens 1200` + gpt-5-nano latency profile)
 - NF-02 (server enforcement: EF pre-check rate 3/24h)
 - S-01 (`OPENAI_API_KEY` solo en `Deno.env`; client zero refs)
 - S-04 (forbidden wording filter en system prompt + tests grep)
 - S-05 (UUID v4 regex server-side antes de cualquier write/call)
 - A-03 (`OPENAI_MODEL` env, default gpt-5-nano)
-- A-04 (`max_output_tokens: 300`, `response_format: json_schema strict`; temperature condicional R7)
+- A-04 (`max_output_tokens: 1200`, `response_format: json_schema strict`; temperature condicional R7)
 - A-05 (prompts en archivos separados, canonical client + mirror server)
 
 **FAILURE refs:**
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
 - #5 (system prompt forbidden wording filter)
 - #6 (`json_schema` strict + client Zod parse)
 - #7 (EF pre-check `SELECT count` + 429 short-circuit + RLS deny-all anon defense in depth)
-- #8 (`max_output_tokens 300`, params locked)
+- #8 (`max_output_tokens 1200`, params locked)
 - #9 (cost cap via `max_output_tokens` + rate limit + logs `tokens_used` en scans tabla)
 
 ---
@@ -240,8 +240,8 @@ DoD #5 cubre simultáneamente S-01 (OpenAI key) y la guard service_role (FAILURE
 | R3 | `supabase functions serve` local difiere de prod Deno runtime (npm: imports) | L | M | Smoke remote post-deploy obligatorio (verify §3 last row); rollback `supabase functions delete classify` si falla |
 | R4 | T3.2 excede 75min (OpenAI SDK Deno debugging, prompts iteration) | M | M | STOP+replan a 60min; fallback hand-rolled fetch a `https://api.openai.com/v1/responses` (~10 líneas) si SDK Deno bug |
 | R5 | Mock removal rompe T1/T2 commits si referencia residual (e.g. tests) | L | M | Pre-edit grep exhaustivo `EXPO_PUBLIC_CLASSIFY_MOCK` en todo `src/`; remover en mismo commit |
-| R6 | Cost runaway durante testing iteration (>€20/mes proyectado NF-02 implicit) | L | M | `max_output_tokens 300` + RL 3/day device + revisar `tokens_used` post-T3; OpenAI dashboard usage cap manual |
-| R7 | gpt-5-nano Responses API no soporta `temperature` param (gpt-5 reasoning models lock temp) — viola REQ-A-04 literal | M | M | T3.2 step 4 empirical check; si rechaza → omit + amendment REQ-A-04 ("params locked: max_output_tokens=300 + response_format strict; temperature pending API support gpt-5 family") con sign-off Sebas |
+| R6 | Cost runaway durante testing iteration (>€20/mes proyectado NF-02 implicit) | L | M | `max_output_tokens 1200` + RL 3/day device + revisar `tokens_used` post-T3; OpenAI dashboard usage cap manual |
+| R7 | gpt-5-nano Responses API no soporta `temperature` param (gpt-5 reasoning models lock temp) — viola REQ-A-04 literal | M | M | T3.2 step 4 empirical check; si rechaza → omit + amendment REQ-A-04 ("params locked: max_output_tokens=1200 + response_format strict; temperature pending API support gpt-5 family") con sign-off Sebas |
 | R8 | `SUPABASE_SERVICE_ROLE_KEY` leak accidental a `.env.local` o `src/` | L | H | DoD #5 grep en cada commit; `.env.local` en `.gitignore` (verify); pre-commit hook V1.1 (out of scope V1.0) |
 
 ## §6 Rollback per task
@@ -253,7 +253,7 @@ DoD #5 cubre simultáneamente S-01 (OpenAI key) y la guard service_role (FAILURE
 ## §7 Handback prompt claude.ai N3 (≤500 chars)
 
 ```
-T3 done GreenReceipt Phase 01. Migration 20260514 scans table + RLS deny-all anon. Edge Fn classify deployed, gpt-5-nano Responses API, max_output_tokens 300, json_schema strict. Rate limit 3/24h via EF pre-check (service_role server-only). Prompts canónicos src/prompts/{system_de,fewshots_de} + mirror. Mock 0. DoD 7/7: <8s P95, 4th=429, tokens>0, grep MOCK/sk-/service_role=0, tsc OK, commit feat(phase01):T3. Próximo: Phase 02 Verdict+Share. ¿Audit L2 pasa?
+T3 done GreenReceipt Phase 01. Migration 20260514 scans table + RLS deny-all anon. Edge Fn classify deployed, gpt-5-nano Responses API, max_output_tokens 1200, json_schema strict. Rate limit 3/24h via EF pre-check (service_role server-only). Prompts canónicos src/prompts/{system_de,fewshots_de} + mirror. Mock 0. DoD 7/7: <8s P95, 4th=429, tokens>0, grep MOCK/sk-/service_role=0, tsc OK, commit feat(phase01):T3. Próximo: Phase 02 Verdict+Share. ¿Audit L2 pasa?
 ```
 
 (497 chars)
