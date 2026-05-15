@@ -10,7 +10,6 @@ export default function VerdictScreen({
   const { verdict } = route.params;
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>{de.verdict.heading}</Text>
       <VerdictBadge verdict={verdict.verdict} />
       <Text style={styles.label}>{de.verdict.confidenceLabel}</Text>
       <Text style={styles.value}>
