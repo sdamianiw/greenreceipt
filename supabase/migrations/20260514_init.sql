@@ -22,3 +22,7 @@ create index scans_device_id_created_at_idx
 alter table public.scans enable row level security;
 
 -- Deny-all anon: no policies. Edge Function uses service_role for all r/w.
+
+-- Service role grants (Edge Function DB access; anon stays denied).
+grant usage on schema public to service_role;
+grant select, insert on table public.scans to service_role;
