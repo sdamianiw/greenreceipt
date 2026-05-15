@@ -50,6 +50,7 @@ supabase/.env
 
 # Local debug screenshots
 screenshots/
+.env.local.bak
 
 # Claude Code local
 .claude/
