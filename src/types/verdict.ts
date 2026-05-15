@@ -23,6 +23,7 @@ export type VerdictResponse = z.infer<typeof VerdictResponseSchema>;
 export const ClassifyErrorEnvelopeSchema = z.discriminatedUnion('error', [
   z.object({ error: z.literal('rate_limit_exceeded') }),
   z.object({ error: z.literal('invalid_input') }),
+  z.object({ error: z.literal('invalid_ocr_text') }),
   z.object({ error: z.literal('invalid_device_id') }),
   z.object({ error: z.literal('invalid_json') }),
   z.object({ error: z.literal('method_not_allowed') }),

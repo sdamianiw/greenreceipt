@@ -23,6 +23,7 @@ export const de = {
     error: {
       title: 'Fehler',
       retry: 'Erneut versuchen',
+      close: 'Schließen',
       network: 'Netzwerkfehler. Bitte erneut versuchen.',
       parse: 'Ungültige Antwort vom Server.',
       rateLimited: 'Tageslimit erreicht. Versuche es morgen.',

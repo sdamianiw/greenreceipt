@@ -46,6 +46,9 @@ export default function ReviewScreen({
             case 'invalid_input':
               msg = de.review.error.codes.invalidInput;
               break;
+            case 'invalid_ocr_text':
+              msg = de.review.error.codes.invalidInput;
+              break;
             case 'invalid_device_id':
               msg = de.review.error.codes.invalidDeviceId;
               break;
@@ -69,7 +72,7 @@ export default function ReviewScreen({
         if (__DEV__) console.warn('classify unknown error', e);
       }
       Alert.alert(de.review.error.title, msg, [
-        { text: de.review.error.retry, onPress: onClassify },
+        { text: de.review.error.close, style: 'cancel' },
       ]);
     } finally {
       setLoading(false);
