@@ -26,6 +26,15 @@ export const de = {
       network: 'Netzwerkfehler. Bitte erneut versuchen.',
       parse: 'Ungültige Antwort vom Server.',
       rateLimited: 'Tageslimit erreicht. Versuche es morgen.',
+      codes: {
+        invalidInput: 'Eingabe zu kurz oder ungültig.',
+        invalidDeviceId: 'Gerätekennung ungültig. App neu starten.',
+        serverNotConfigured:
+          'Server nicht konfiguriert. Bitte später erneut versuchen.',
+        classificationFailed:
+          'Klassifizierung fehlgeschlagen. Bitte erneut versuchen.',
+        unknown: 'Unbekannter Fehler.',
+      },
     },
   },
   verdict: {

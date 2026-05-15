@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { palette, fonts } from '../theme/chemtrace';
 import { de } from '../locales/de';
 import { VerdictBadge } from '../components/VerdictBadge';
@@ -23,6 +23,14 @@ export default function VerdictScreen({
           • {point}
         </Text>
       ))}
+      <View style={styles.metaBlock}>
+        <Text style={styles.metaLine}>
+          {de.verdict.modelLabel}: {verdict.model_used}
+        </Text>
+        <Text style={styles.metaLine}>
+          {de.verdict.tokensLabel}: {verdict.tokens_used}
+        </Text>
+      </View>
     </ScrollView>
   );
 }
@@ -62,5 +70,17 @@ const styles = StyleSheet.create({
     color: palette.cream,
     fontSize: 14,
     lineHeight: 20,
+  },
+  metaBlock: {
+    marginTop: 24,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: palette.creamDim,
+    gap: 2,
+  },
+  metaLine: {
+    fontFamily: fonts.mono,
+    color: palette.creamDim,
+    fontSize: 12,
   },
 });

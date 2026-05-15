@@ -19,3 +19,28 @@ export const VerdictResponseSchema = z.object({
 
 export type Verdict = z.infer<typeof VerdictEnum>;
 export type VerdictResponse = z.infer<typeof VerdictResponseSchema>;
+
+export const ClassifyErrorEnvelopeSchema = z.discriminatedUnion('error', [
+  z.object({ error: z.literal('rate_limit_exceeded') }),
+  z.object({ error: z.literal('invalid_input') }),
+  z.object({ error: z.literal('invalid_device_id') }),
+  z.object({ error: z.literal('invalid_json') }),
+  z.object({ error: z.literal('method_not_allowed') }),
+  z.object({ error: z.literal('server_not_configured') }),
+  z.object({
+    error: z.literal('classification_failed'),
+    error_code: z.string(),
+  }),
+]);
+
+export type ClassifyErrorEnvelope = z.infer<typeof ClassifyErrorEnvelopeSchema>;
+
+export class ClassifyError extends Error {
+  constructor(
+    public envelope: ClassifyErrorEnvelope,
+    public httpStatus: number,
+  ) {
+    super(envelope.error);
+    this.name = 'ClassifyError';
+  }
+}

@@ -13,6 +13,7 @@ import { palette, fonts } from '../theme/chemtrace';
 import { de } from '../locales/de';
 import type { RootStackScreenProps } from '../types/navigation';
 import { classify } from '../services/classify';
+import { ClassifyError } from '../types/verdict';
 import { getOrCreateDeviceId } from '../services/deviceId';
 
 export default function ReviewScreen({
@@ -29,14 +30,44 @@ export default function ReviewScreen({
       const verdict = await classify(text, deviceId);
       navigation.navigate('Verdict', { verdict });
     } catch (e) {
-      // TODO T3: refine via `e instanceof z.ZodError` + Supabase FunctionsHttpError.context.response.status === 429.
-      // For T2 mock-only path, this fallback chain is acceptable (mock never throws).
-      const msg =
-        e instanceof Error && e.message.includes('429')
-          ? de.review.error.rateLimited
-          : e instanceof Error && /parse|Zod/i.test(e.message)
-            ? de.review.error.parse
-            : de.review.error.network;
+      let msg: string;
+      if (e instanceof ClassifyError) {
+        const env = e.envelope;
+        if (
+          env.error === 'classification_failed' &&
+          env.error_code === 'network_or_unknown'
+        ) {
+          msg = de.review.error.network;
+        } else {
+          switch (env.error) {
+            case 'rate_limit_exceeded':
+              msg = de.review.error.rateLimited;
+              break;
+            case 'invalid_input':
+              msg = de.review.error.codes.invalidInput;
+              break;
+            case 'invalid_device_id':
+              msg = de.review.error.codes.invalidDeviceId;
+              break;
+            case 'server_not_configured':
+              msg = de.review.error.codes.serverNotConfigured;
+              break;
+            case 'classification_failed':
+              msg = de.review.error.codes.classificationFailed;
+              break;
+            default:
+              msg = de.review.error.codes.unknown;
+          }
+        }
+        if (__DEV__) {
+          const codeSuffix =
+            env.error === 'classification_failed' ? `: ${env.error_code}` : '';
+          msg = `${msg}\n[${env.error}${codeSuffix}]`;
+        }
+      } else {
+        msg = de.review.error.network;
+        if (__DEV__) console.warn('classify unknown error', e);
+      }
       Alert.alert(de.review.error.title, msg, [
         { text: de.review.error.retry, onPress: onClassify },
       ]);
