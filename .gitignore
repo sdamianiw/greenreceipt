@@ -47,3 +47,6 @@ supabase/.env
 
 # Expo local
 .expo/
+
+# Local debug screenshots
+screenshots/
