@@ -8,27 +8,52 @@ export default function VerdictScreen({
   route,
 }: RootStackScreenProps<'Verdict'>) {
   const { verdict } = route.params;
+  const confidencePercent = Math.round(
+    Math.max(0, Math.min(1, verdict.confidence)) * 100,
+  );
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <VerdictBadge verdict={verdict.verdict} />
-      <Text style={styles.label}>{de.verdict.confidenceLabel}</Text>
-      <Text style={styles.value}>
-        {Math.round(verdict.confidence * 100)}%
-      </Text>
-      <Text style={styles.label}>{de.verdict.reasoningLabel}</Text>
-      <Text style={styles.value}>{verdict.reasoning}</Text>
-      <Text style={styles.label}>{de.verdict.evidenceLabel}</Text>
-      {verdict.evidence_points.map((point, i) => (
-        <Text key={i} style={styles.evidence}>
-          • {point}
-        </Text>
-      ))}
-      <View style={styles.metaBlock}>
-        <Text style={styles.metaLine}>
-          {de.verdict.modelLabel}: {verdict.model_used}
-        </Text>
-        <Text style={styles.metaLine}>
-          {de.verdict.tokensLabel}: {verdict.tokens_used}
+      <View style={styles.card}>
+        <Text style={styles.brand}>{de.app.name}</Text>
+        <VerdictBadge verdict={verdict.verdict} />
+
+        <View style={styles.section}>
+          <Text style={styles.label}>{de.verdict.confidenceLabel}</Text>
+          <View style={styles.confidenceRow}>
+            <View style={styles.confidenceBar}>
+              <View
+                style={[
+                  styles.confidenceFill,
+                  { width: `${confidencePercent}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.confidenceValue}>{confidencePercent}%</Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>{de.verdict.reasoningLabel}</Text>
+          <Text style={styles.reasoning}>{verdict.reasoning}</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>{de.verdict.evidenceLabel}</Text>
+          <View style={styles.chipsBlock}>
+            {verdict.evidence_points.map((point, i) => (
+              <View key={i} style={styles.chip}>
+                <Text style={styles.chipText}>{point}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.disclaimer}>{de.verdict.disclaimer}</Text>
+
+        <Text style={styles.telemetry}>
+          {verdict.model_used} · {verdict.tokens_used} {de.verdict.tokensLabel}
         </Text>
       </View>
     </ScrollView>
@@ -41,46 +66,96 @@ const styles = StyleSheet.create({
     backgroundColor: palette.bg,
   },
   content: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 32,
-    gap: 8,
   },
-  heading: {
+  card: {
+    backgroundColor: palette.terminalBg,
+    borderColor: palette.creamDim,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 20,
+    gap: 16,
+  },
+  brand: {
     fontFamily: fonts.display,
-    color: palette.cream,
-    fontSize: 24,
+    color: palette.creamDim,
+    fontSize: 14,
+    letterSpacing: 1,
+  },
+  section: {
+    gap: 6,
   },
   label: {
     fontFamily: fonts.body,
     color: palette.creamDim,
-    fontSize: 12,
+    fontSize: 11,
     letterSpacing: 1,
-    marginTop: 8,
     textTransform: 'uppercase',
   },
-  value: {
+  confidenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  confidenceBar: {
+    flex: 1,
+    height: 4,
+    backgroundColor: palette.bg,
+    borderColor: palette.creamDim,
+    borderWidth: 1,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  confidenceFill: {
+    height: '100%',
+    backgroundColor: palette.cream,
+  },
+  confidenceValue: {
+    fontFamily: fonts.mono,
+    color: palette.cream,
+    fontSize: 13,
+    minWidth: 40,
+    textAlign: 'right',
+  },
+  reasoning: {
     fontFamily: fonts.body,
     color: palette.cream,
     fontSize: 15,
     lineHeight: 22,
   },
-  evidence: {
+  chipsBlock: {
+    gap: 6,
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: palette.creamDim,
+    borderRadius: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: palette.bg,
+  },
+  chipText: {
     fontFamily: fonts.body,
     color: palette.cream,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
-  metaBlock: {
-    marginTop: 24,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: palette.creamDim,
-    gap: 2,
+  divider: {
+    height: 1,
+    backgroundColor: palette.creamDim,
   },
-  metaLine: {
+  disclaimer: {
+    fontFamily: fonts.body,
+    color: palette.creamDim,
+    fontSize: 11,
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
+  telemetry: {
     fontFamily: fonts.mono,
     color: palette.creamDim,
-    fontSize: 12,
+    fontSize: 11,
   },
 });

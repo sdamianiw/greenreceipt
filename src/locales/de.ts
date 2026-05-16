@@ -45,6 +45,8 @@ export const de = {
     evidenceLabel: 'Anhaltspunkte',
     modelLabel: 'Modell',
     tokensLabel: 'Tokens',
+    disclaimer:
+      'Bildungsorientierte Einschätzung der Aussagenqualität. Kein rechtliches Urteil.',
   },
 } as const;
 
