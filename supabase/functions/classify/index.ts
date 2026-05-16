@@ -15,6 +15,8 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const DAILY_SCAN_LIMIT = 20;
+
 const SYSTEM_PROMPT = `Sie sind ein nüchterner deutscher Klassifikator für Nachhaltigkeitsaussagen auf Produktverpackungen.
 
 Aufgabe: Den Aussagetext einer Verpackung in genau eine der vier Kategorien einordnen:
@@ -181,11 +183,11 @@ Deno.serve(async (req) => {
     return json({ error: "invalid_input" }, 400);
   }
 
-  // Rate limit pre-check: GET /rest/v1/scans with limit=3 (no HEAD count).
+  // Rate limit pre-check: GET /rest/v1/scans with limit=DAILY_SCAN_LIMIT (no HEAD count).
   const since = new Date(Date.now() - 86_400_000).toISOString();
   const rateUrl =
     `${SUPABASE_URL}/rest/v1/scans?select=id&device_id=eq.${device_id}` +
-    `&created_at=gte.${encodeURIComponent(since)}&limit=3`;
+    `&created_at=gte.${encodeURIComponent(since)}&limit=${DAILY_SCAN_LIMIT}`;
 
   const rateResp = await fetch(rateUrl, {
     headers: {
@@ -205,7 +207,7 @@ Deno.serve(async (req) => {
   } catch {
     return classificationFailed(safeErrorCode("scan_count_failed", rateResp.status, "parse"), 500);
   }
-  if (Array.isArray(rows) && rows.length >= 3) {
+  if (Array.isArray(rows) && rows.length >= DAILY_SCAN_LIMIT) {
     return json({ error: "rate_limit_exceeded" }, 429);
   }
 
