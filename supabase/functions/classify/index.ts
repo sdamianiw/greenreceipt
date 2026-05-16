@@ -17,41 +17,42 @@ const CORS_HEADERS = {
 
 const DAILY_SCAN_LIMIT = 20;
 
-const SYSTEM_PROMPT = `Sie sind ein nüchterner deutscher Klassifikator für Nachhaltigkeitsaussagen auf Produktverpackungen.
+const SYSTEM_PROMPT = `You are a sober classifier of sustainability claims printed on product packaging.
 
-Aufgabe: Den Aussagetext einer Verpackung in genau eine der vier Kategorien einordnen:
-- "Vague": Sehr allgemein, ohne überprüfbaren Bezug.
-- "Verifiable": Konkret und potenziell überprüfbar, aber ohne Beleg im Text.
-- "Unsupported": Konkret, aber ohne den dort erwarteten Verweis auf eine Norm oder Quelle.
-- "Substantiated": Konkret, mit Verweis auf eine Norm, Prüfstelle, Zertifikat oder Studie.
+Task: Assign the claim text to exactly one of four categories:
+- "Vague": Very general, with no verifiable reference.
+- "Verifiable": Concrete and in principle verifiable, but with no evidence shown in the text.
+- "Unsupported": Concrete, but lacking the kind of standard or external reference that would normally be expected.
+- "Substantiated": Concrete, with a reference to a standard, testing body, certificate, or study.
 
-Strenge Regeln:
-1. Sachliche, beschreibende Sprache. Keine moralischen Wertungen.
-2. Keine Vorwürfe, keine rechtlichen Bewertungen, keine endgültigen Verurteilungen einzelner Unternehmen oder Marken.
-3. Keine Bezüge auf Vergehen, Straftaten oder geschäftliche Unredlichkeit.
-4. Beschreiben Sie ausschließlich, was im Text steht und was fehlt. Keine Mutmaßungen über Absichten.
-5. Bei Unsicherheit konservativ herabstufen (z.B. "Verifiable" statt "Substantiated").
-6. Antworten Sie auf Deutsch. Reasoning maximal 200 Zeichen. Bis zu 3 evidence_points, jeweils maximal 80 Zeichen.
+Strict rules:
+1. Factual, descriptive language. No moral judgments.
+2. No accusations, no legal assessments, no final verdicts about specific companies or brands. Never use words like greenwashing, illegal, fraud, lie, lying, guilty, deception, Betrug, Lüge, schuldig, Verbrauchertäuschung.
+3. No claims about misconduct, crimes, or commercial dishonesty.
+4. Describe only what the text says and what is missing. Do not speculate about intent.
+5. When uncertain, downgrade conservatively (e.g., "Verifiable" instead of "Substantiated").
+6. Write reasoning and evidence_points in English, regardless of the input language. Reasoning max 200 characters. Up to 3 evidence_points, each max 80 characters.
+7. Set language_detected to reflect the input text language: "de", "en", "es", or "other".
 
-Antwort: JSON mit den Feldern verdict, confidence, reasoning, evidence_points, language_detected.`;
+Response: JSON with fields verdict, confidence, reasoning, evidence_points, language_detected.`;
 
 const FEWSHOTS = [
   { role: "user", content: "umweltfreundlich" },
-  { role: "assistant", content: "{\"verdict\":\"Vague\",\"confidence\":0.9,\"reasoning\":\"Sehr allgemeines Wort ohne konkreten überprüfbaren Inhalt.\",\"evidence_points\":[\"keine Norm genannt\",\"keine Mengenangabe\"],\"language_detected\":\"de\"}" },
+  { role: "assistant", content: "{\"verdict\":\"Vague\",\"confidence\":0.9,\"reasoning\":\"Very general term with no concrete verifiable content.\",\"evidence_points\":[\"no standard cited\",\"no quantitative claim\"],\"language_detected\":\"de\"}" },
   { role: "user", content: "klimaneutral" },
-  { role: "assistant", content: "{\"verdict\":\"Vague\",\"confidence\":0.85,\"reasoning\":\"Begriff ohne Bilanzierungsmethode oder Standardverweis im Text.\",\"evidence_points\":[\"keine Methodik\",\"kein Standard\"],\"language_detected\":\"de\"}" },
+  { role: "assistant", content: "{\"verdict\":\"Vague\",\"confidence\":0.85,\"reasoning\":\"Term used without accounting methodology or standard reference in the text.\",\"evidence_points\":[\"no methodology stated\",\"no standard cited\"],\"language_detected\":\"de\"}" },
   { role: "user", content: "70% recyceltes Plastik" },
-  { role: "assistant", content: "{\"verdict\":\"Verifiable\",\"confidence\":0.8,\"reasoning\":\"Konkreter Prozentsatz, im Prinzip überprüfbar, kein Beleg im Text.\",\"evidence_points\":[\"konkrete Zahl 70%\",\"kein Prüfsiegel angegeben\"],\"language_detected\":\"de\"}" },
+  { role: "assistant", content: "{\"verdict\":\"Verifiable\",\"confidence\":0.8,\"reasoning\":\"Concrete percentage, in principle verifiable, but no evidence shown in the text.\",\"evidence_points\":[\"concrete figure 70%\",\"no certification mark shown\"],\"language_detected\":\"de\"}" },
   { role: "user", content: "100% biologisch abbaubar" },
-  { role: "assistant", content: "{\"verdict\":\"Verifiable\",\"confidence\":0.75,\"reasoning\":\"Konkrete Eigenschaftsaussage, ohne Verweis auf Norm wie EN 13432.\",\"evidence_points\":[\"konkret formuliert\",\"keine Norm zitiert\"],\"language_detected\":\"de\"}" },
+  { role: "assistant", content: "{\"verdict\":\"Verifiable\",\"confidence\":0.75,\"reasoning\":\"Concrete property claim, but no reference to a standard such as EN 13432.\",\"evidence_points\":[\"concretely worded\",\"no standard cited\"],\"language_detected\":\"de\"}" },
   { role: "user", content: "CO2-neutral gemäß eigenem Standard" },
-  { role: "assistant", content: "{\"verdict\":\"Unsupported\",\"confidence\":0.7,\"reasoning\":\"Konkret, aber 'eigener Standard' ist kein anerkannter externer Beleg.\",\"evidence_points\":[\"interner Standard\",\"keine externe Prüfstelle\"],\"language_detected\":\"de\"}" },
+  { role: "assistant", content: "{\"verdict\":\"Unsupported\",\"confidence\":0.7,\"reasoning\":\"Concrete, but 'own standard' is not a recognized external reference.\",\"evidence_points\":[\"internal standard only\",\"no external testing body\"],\"language_detected\":\"de\"}" },
   { role: "user", content: "natürlich und gesund" },
-  { role: "assistant", content: "{\"verdict\":\"Unsupported\",\"confidence\":0.65,\"reasoning\":\"Behauptung gesundheitlicher Wirkung ohne erforderlichen Studienverweis.\",\"evidence_points\":[\"Gesundheitsaussage\",\"kein Studienverweis\"],\"language_detected\":\"de\"}" },
+  { role: "assistant", content: "{\"verdict\":\"Unsupported\",\"confidence\":0.65,\"reasoning\":\"Health-related claim without the required reference to a study.\",\"evidence_points\":[\"health claim\",\"no study cited\"],\"language_detected\":\"de\"}" },
   { role: "user", content: "FSC-zertifiziertes Papier, Lizenz FSC-C123456" },
-  { role: "assistant", content: "{\"verdict\":\"Substantiated\",\"confidence\":0.95,\"reasoning\":\"Konkrete Zertifizierung mit prüfbarer Lizenznummer.\",\"evidence_points\":[\"FSC-Zertifizierung\",\"Lizenz FSC-C123456\"],\"language_detected\":\"de\"}" },
+  { role: "assistant", content: "{\"verdict\":\"Substantiated\",\"confidence\":0.95,\"reasoning\":\"Concrete certification with a verifiable license number.\",\"evidence_points\":[\"FSC certification\",\"license FSC-C123456\"],\"language_detected\":\"de\"}" },
   { role: "user", content: "Kompostierbar nach EN 13432, geprüft durch DIN CERTCO" },
-  { role: "assistant", content: "{\"verdict\":\"Substantiated\",\"confidence\":0.95,\"reasoning\":\"Norm zitiert und konkrete Prüfstelle benannt.\",\"evidence_points\":[\"EN 13432\",\"DIN CERTCO\"],\"language_detected\":\"de\"}" },
+  { role: "assistant", content: "{\"verdict\":\"Substantiated\",\"confidence\":0.95,\"reasoning\":\"Standard cited and a concrete testing body named.\",\"evidence_points\":[\"EN 13432\",\"DIN CERTCO\"],\"language_detected\":\"de\"}" },
 ];
 
 const VERDICT_SCHEMA = {
