@@ -5,6 +5,7 @@ import {
   VerdictResponseSchema,
   type VerdictResponse,
 } from '../types/verdict';
+import { normalizeOcrText } from './ocrNormalize';
 import { supabase } from './supabase';
 
 function hasStringError(x: unknown): x is { error: string } {
@@ -21,7 +22,7 @@ export async function classify(
   deviceId: string,
 ): Promise<VerdictResponse> {
   const { data, error } = await supabase.functions.invoke('classify', {
-    body: { ocr_text: ocrText, device_id: deviceId },
+    body: { ocr_text: normalizeOcrText(ocrText), device_id: deviceId },
   });
 
   if (error) {
