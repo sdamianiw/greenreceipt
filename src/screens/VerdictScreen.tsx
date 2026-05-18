@@ -20,7 +20,59 @@ const isCleanEnglishChip = (p: string) =>
   p.length <= 80;
 
 const numberLike = /%|percent|\d+/i;
-const certLike = /certif|standard|FSC|ISO|EU label|seal|source/i;
+const certPositiveRe =
+  /\b(FSC|ISO\s*\d|EU\s*Ecolabel|ClimatePartner|Rainforest\s*Alliance|Fair\s*Trade|certified|certification|standard|seal)\b/i;
+const certNegationRe =
+  /\b(no|without|lacks?|lacking|missing|absent|not)\s+(?:any\s+)?(?:external\s+|third[- ]party\s+|independent\s+)?(certification|certifications|standard|standards|cert(?:ified)?|seal|seals|label|labels)\b/i;
+
+type ClaimSources = { reasoning: string; evidence_points: string[] };
+
+const RECYCLED_NOUNS =
+  'plastic|material|content|packaging|paper|aluminum|aluminium|glass|cardboard|fiber|fibre';
+
+function deriveAssessedClaim(v: ClaimSources, fallback: string): string {
+  const haystack = [v.reasoning, ...v.evidence_points].join(' ');
+
+  // (a) percentage + recycled <material>
+  const rePctRecycled = new RegExp(
+    `(\\d{1,3})\\s*%\\s*(?:of\\s+)?(?:recycled\\s+)(${RECYCLED_NOUNS})`,
+    'i',
+  );
+  const reRecycledPct = new RegExp(
+    `recycled\\s+(${RECYCLED_NOUNS})[^%]{0,20}?(\\d{1,3})\\s*%`,
+    'i',
+  );
+  let m = rePctRecycled.exec(haystack);
+  if (m) return `${m[1]}% recycled ${m[2].toLowerCase()}`;
+  m = reRecycledPct.exec(haystack);
+  if (m) return `${m[2]}% recycled ${m[1].toLowerCase()}`;
+
+  // (b) CO2 / emission reduction with %
+  const reCo2 =
+    /(\d{1,3})\s*%\s*(?:CO2?|carbon|emission|emissions)\s*(?:reduction|cut|less|lower)?/i;
+  m = reCo2.exec(haystack);
+  if (m) return `${m[1]}% CO2 reduction`;
+
+  // (c) generic percentage + nearby noun (best-effort, max 60 chars)
+  const reGenericPct = /(\d{1,3})\s*%\s*(?:of\s+)?([A-Za-z][A-Za-z\s-]{2,40})/;
+  m = reGenericPct.exec(haystack);
+  if (m) {
+    const noun = m[2].trim().split(/\s+/).slice(0, 3).join(' ').toLowerCase();
+    return `${m[1]}% ${noun}`.slice(0, 60);
+  }
+
+  // (d) certification / standard markers
+  if (/\bFSC\b/i.test(haystack)) return 'FSC certified';
+  const iso = /\bISO\s*(\d{4,5})/i.exec(haystack);
+  if (iso) return `ISO ${iso[1]}`;
+  if (/\bEU\s*Ecolabel\b/i.test(haystack)) return 'EU Ecolabel';
+  if (/\bClimatePartner\b/i.test(haystack)) return 'ClimatePartner';
+  if (/\bRainforest\s*Alliance\b/i.test(haystack)) return 'Rainforest Alliance';
+  if (/\bFair\s*Trade\b/i.test(haystack)) return 'Fair Trade';
+
+  // (e) fallback
+  return fallback;
+}
 
 export default function VerdictScreen({
   route,
@@ -36,14 +88,17 @@ export default function VerdictScreen({
 
   const haystack = [verdict.reasoning, ...verdict.evidence_points].join(' ');
   const mentionsNumber = numberLike.test(haystack);
-  const mentionsCert = certLike.test(haystack);
+  const mentionsCertPositive =
+    certPositiveRe.test(haystack) && !certNegationRe.test(haystack);
+
+  const derivedClaim = deriveAssessedClaim(verdict, de.verdict.claimNeutral);
 
   let displayChips: string[];
   if (verdict.verdict === 'Verifiable') {
     const derived: string[] = [];
     if (mentionsNumber) derived.push('Specific percentage detected');
     derived.push('Claim is measurable');
-    if (!mentionsCert) derived.push(de.verdict.noCertChip);
+    if (!mentionsCertPositive) derived.push(de.verdict.noCertChip);
     const seen = new Set(derived.map((s) => s.toLowerCase()));
     const extras = cleanedOriginals.filter((p) => !seen.has(p.toLowerCase()));
     displayChips = [...derived, ...extras].slice(0, 3);
@@ -59,7 +114,7 @@ export default function VerdictScreen({
 
         <View style={styles.section}>
           <Text style={styles.label}>{de.verdict.claimLabel}</Text>
-          <Text style={styles.claim}>{de.verdict.claimNeutral}</Text>
+          <Text style={styles.claim}>{derivedClaim}</Text>
         </View>
 
         <View style={styles.section}>
