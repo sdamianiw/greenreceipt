@@ -39,14 +39,18 @@ export const de = {
     },
   },
   verdict: {
-    heading: 'Ergebnis',
-    confidenceLabel: 'Konfidenz',
-    reasoningLabel: 'Begründung',
-    evidenceLabel: 'Anhaltspunkte',
-    modelLabel: 'Modell',
-    tokensLabel: 'Tokens',
+    heading: 'Result',
+    confidenceLabel: 'Confidence',
+    reasoningLabel: 'Why this verdict',
+    evidenceLabel: 'Evidence found',
+    modelLabel: 'Model',
+    tokensLabel: 'tokens',
     disclaimer:
-      'Bildungsorientierte Einschätzung der Aussagenqualität. Kein rechtliches Urteil.',
+      'Educational assessment of claim quality. Not a legal judgment.',
+    brandMeta: 'EVIDENCE CARD · GREENRECEIPT',
+    claimLabel: 'Assessed claim',
+    claimNeutral: 'Sustainability claim detected',
+    noCertChip: 'No certification cited',
   },
 } as const;
 

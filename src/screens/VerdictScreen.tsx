@@ -3,6 +3,24 @@ import { palette, fonts } from '../theme/chemtrace';
 import { de } from '../locales/de';
 import { VerdictBadge } from '../components/VerdictBadge';
 import type { RootStackScreenProps } from '../types/navigation';
+import type { Verdict } from '../types/verdict';
+
+const confidenceColor: Record<Verdict, string> = {
+  Vague: '#F5A524',
+  Verifiable: palette.blue,
+  Unsupported: palette.rust,
+  Substantiated: '#62C28E',
+};
+
+const ASCII_PRINTABLE = /^[\x20-\x7E]+$/;
+const isCleanEnglishChip = (p: string) =>
+  ASCII_PRINTABLE.test(p) &&
+  (p.match(/[a-zA-Z]{3,}/g) || []).length >= 2 &&
+  p.length >= 8 &&
+  p.length <= 80;
+
+const numberLike = /%|percent|\d+/i;
+const certLike = /certif|standard|FSC|ISO|EU label|seal|source/i;
 
 export default function VerdictScreen({
   route,
@@ -11,11 +29,38 @@ export default function VerdictScreen({
   const confidencePercent = Math.round(
     Math.max(0, Math.min(1, verdict.confidence)) * 100,
   );
+
+  const cleanedOriginals = verdict.evidence_points
+    .map((p) => p.trim())
+    .filter(isCleanEnglishChip);
+
+  const haystack = [verdict.reasoning, ...verdict.evidence_points].join(' ');
+  const mentionsNumber = numberLike.test(haystack);
+  const mentionsCert = certLike.test(haystack);
+
+  let displayChips: string[];
+  if (verdict.verdict === 'Verifiable') {
+    const derived: string[] = [];
+    if (mentionsNumber) derived.push('Specific percentage detected');
+    derived.push('Claim is measurable');
+    if (!mentionsCert) derived.push(de.verdict.noCertChip);
+    const seen = new Set(derived.map((s) => s.toLowerCase()));
+    const extras = cleanedOriginals.filter((p) => !seen.has(p.toLowerCase()));
+    displayChips = [...derived, ...extras].slice(0, 3);
+  } else {
+    displayChips = cleanedOriginals.slice(0, 3);
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.card}>
-        <Text style={styles.brand}>{de.app.name}</Text>
+        <Text style={styles.brandMeta}>{de.verdict.brandMeta}</Text>
         <VerdictBadge verdict={verdict.verdict} />
+
+        <View style={styles.section}>
+          <Text style={styles.label}>{de.verdict.claimLabel}</Text>
+          <Text style={styles.claim}>{de.verdict.claimNeutral}</Text>
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.label}>{de.verdict.confidenceLabel}</Text>
@@ -24,7 +69,10 @@ export default function VerdictScreen({
               <View
                 style={[
                   styles.confidenceFill,
-                  { width: `${confidencePercent}%` },
+                  {
+                    width: `${confidencePercent}%`,
+                    backgroundColor: confidenceColor[verdict.verdict],
+                  },
                 ]}
               />
             </View>
@@ -37,20 +85,22 @@ export default function VerdictScreen({
           <Text style={styles.reasoning}>{verdict.reasoning}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>{de.verdict.evidenceLabel}</Text>
-          <View style={styles.chipsBlock}>
-            {verdict.evidence_points.map((point, i) => (
-              <View key={i} style={styles.chip}>
-                <Text style={styles.chipText}>{point}</Text>
-              </View>
-            ))}
+        {displayChips.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.label}>{de.verdict.evidenceLabel}</Text>
+            <View style={styles.chipsBlock}>
+              {displayChips.map((point, i) => (
+                <View key={i} style={styles.chip}>
+                  <Text style={styles.chipText}>{point}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
-
-        <View style={styles.divider} />
+        )}
 
         <Text style={styles.disclaimer}>{de.verdict.disclaimer}</Text>
+
+        <View style={styles.divider} />
 
         <Text style={styles.telemetry}>
           {verdict.model_used} · {verdict.tokens_used} {de.verdict.tokensLabel}
@@ -72,17 +122,18 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: palette.terminalBg,
-    borderColor: palette.creamDim,
+    borderColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 20,
-    gap: 16,
+    borderRadius: 18,
+    padding: 24,
+    gap: 20,
   },
-  brand: {
-    fontFamily: fonts.display,
+  brandMeta: {
+    fontFamily: fonts.body,
     color: palette.creamDim,
-    fontSize: 14,
-    letterSpacing: 1,
+    fontSize: 10,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   section: {
     gap: 6,
@@ -93,6 +144,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1,
     textTransform: 'uppercase',
+  },
+  claim: {
+    fontFamily: fonts.body,
+    color: palette.cream,
+    fontSize: 15,
+    lineHeight: 22,
   },
   confidenceRow: {
     flexDirection: 'row',
@@ -110,7 +167,6 @@ const styles = StyleSheet.create({
   },
   confidenceFill: {
     height: '100%',
-    backgroundColor: palette.cream,
   },
   confidenceValue: {
     fontFamily: fonts.mono,
@@ -130,11 +186,11 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1,
-    borderColor: palette.creamDim,
-    borderRadius: 4,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 6,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: palette.bg,
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   chipText: {
     fontFamily: fonts.body,
@@ -144,7 +200,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: palette.creamDim,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   disclaimer: {
     fontFamily: fonts.body,
@@ -155,7 +211,7 @@ const styles = StyleSheet.create({
   },
   telemetry: {
     fontFamily: fonts.mono,
-    color: palette.creamDim,
-    fontSize: 11,
+    color: 'rgba(241,236,222,0.4)',
+    fontSize: 10,
   },
 });
