@@ -150,6 +150,7 @@ async function insertScanMetadata(
       Prefer: "return=minimal",
     },
     body: JSON.stringify(row),
+    signal: AbortSignal.timeout(5_000),
   });
 }
 
@@ -193,12 +194,22 @@ Deno.serve(async (req) => {
     `${SUPABASE_URL}/rest/v1/scans?select=id&device_id=eq.${device_id}` +
     `&created_at=gte.${encodeURIComponent(since)}&limit=${DAILY_SCAN_LIMIT}`;
 
-  const rateResp = await fetch(rateUrl, {
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-  });
+  let rateResp: Response;
+  try {
+    rateResp = await fetch(rateUrl, {
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      signal: AbortSignal.timeout(5_000),
+    });
+  } catch (err) {
+    const isTimeout = err?.name === "TimeoutError";
+    return classificationFailed(
+      isTimeout ? "scan_count_timeout" : "scan_count_network_error",
+      isTimeout ? 504 : 502,
+    );
+  }
 
   if (!rateResp.ok) {
     const t = await rateResp.text().catch(() => "");
@@ -216,31 +227,41 @@ Deno.serve(async (req) => {
   }
 
   // OpenAI Responses API (raw fetch — Deno runtime / gpt-5-nano lock).
-  const oaResp = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      input: [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...FEWSHOTS,
-        { role: "user", content: ocrText },
-      ],
-      reasoning: { effort: "low" },
-      max_output_tokens: 1200,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "VerdictResponse",
-          schema: VERDICT_SCHEMA,
-          strict: true,
-        },
+  let oaResp: Response;
+  try {
+    oaResp = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
-    }),
-  });
+      body: JSON.stringify({
+        model: MODEL,
+        input: [
+          { role: "system", content: SYSTEM_PROMPT },
+          ...FEWSHOTS,
+          { role: "user", content: ocrText },
+        ],
+        reasoning: { effort: "low" },
+        max_output_tokens: 1200,
+        text: {
+          format: {
+            type: "json_schema",
+            name: "VerdictResponse",
+            schema: VERDICT_SCHEMA,
+            strict: true,
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (err) {
+    const isTimeout = err?.name === "TimeoutError";
+    return classificationFailed(
+      isTimeout ? "openai_timeout" : "openai_network_error",
+      isTimeout ? 504 : 502,
+    );
+  }
 
   if (!oaResp.ok) {
     const t = await oaResp.text().catch(() => "");
@@ -275,13 +296,22 @@ Deno.serve(async (req) => {
 
   const tokensUsed: number = oaJson?.usage?.total_tokens ?? 0;
 
-  const insResp = await insertScanMetadata(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    device_id,
-    verdict: parsed.verdict,
-    confidence: parsed.confidence,
-    model_used: MODEL,
-    tokens_used: tokensUsed,
-  });
+  let insResp: Response;
+  try {
+    insResp = await insertScanMetadata(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      device_id,
+      verdict: parsed.verdict,
+      confidence: parsed.confidence,
+      model_used: MODEL,
+      tokens_used: tokensUsed,
+    });
+  } catch (err) {
+    const isTimeout = err?.name === "TimeoutError";
+    return classificationFailed(
+      isTimeout ? "scan_insert_timeout" : "scan_insert_network_error",
+      isTimeout ? 504 : 502,
+    );
+  }
 
   if (!insResp.ok) {
     const t = await insResp.text().catch(() => "");
