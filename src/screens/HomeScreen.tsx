@@ -52,7 +52,7 @@ export default function HomeScreen({ navigation }: RootStackScreenProps<'Home'>)
       }
       const result = await TextRecognition.recognize(photo.uri);
       const text = result.text?.trim() ?? '';
-      console.log('[OCR] extracted:', text);
+      if (__DEV__) console.log('[OCR] extracted:', text);
       if (!text) {
         Alert.alert(de.home.ocrEmpty);
         return;
