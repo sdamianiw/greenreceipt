@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
   if (typeof device_id !== "string" || !UUID_V4.test(device_id)) {
     return json({ error: "invalid_device_id" }, 400);
   }
-  if (typeof ocrText !== "string" || ocrText.length < 3) {
+  if (typeof ocrText !== "string" || ocrText.length < 3 || ocrText.length > 4000) {
     return json({ error: "invalid_input" }, 400);
   }
 
