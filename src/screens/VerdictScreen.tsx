@@ -96,8 +96,8 @@ export default function VerdictScreen({
   let displayChips: string[];
   if (verdict.verdict === 'Verifiable') {
     const derived: string[] = [];
-    if (mentionsNumber) derived.push('Specific percentage detected');
-    derived.push('Claim is measurable');
+    if (mentionsNumber) derived.push(de.verdict.chipNumberDetected);
+    derived.push(de.verdict.chipMeasurable);
     if (!mentionsCertPositive) derived.push(de.verdict.noCertChip);
     const seen = new Set(derived.map((s) => s.toLowerCase()));
     const extras = cleanedOriginals.filter((p) => !seen.has(p.toLowerCase()));

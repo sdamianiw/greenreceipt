@@ -51,6 +51,8 @@ export const de = {
     claimLabel: 'Assessed claim',
     claimNeutral: 'Sustainability claim detected',
     noCertChip: 'No certification cited',
+    chipNumberDetected: 'Specific percentage detected',
+    chipMeasurable: 'Claim is measurable',
   },
 } as const;
 
