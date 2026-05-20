@@ -72,6 +72,9 @@ const VERDICT_SCHEMA = {
 };
 
 function json(body: unknown, status: number): Response {
+  if (status >= 400) {
+    console.error(JSON.stringify({ status, body }));
+  }
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json", ...CORS_HEADERS },
