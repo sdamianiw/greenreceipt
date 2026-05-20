@@ -31,8 +31,9 @@ Strict rules:
 3. No claims about misconduct, crimes, or commercial dishonesty.
 4. Describe only what the text says and what is missing. Do not speculate about intent.
 5. When uncertain, downgrade conservatively (e.g., "Verifiable" instead of "Substantiated").
-6. Write reasoning and evidence_points in English, regardless of the input language. Reasoning max 200 characters. Up to 3 evidence_points, each max 80 characters.
-7. Set language_detected to reflect the input text language: "de", "en", "es", or "other".
+6. Absolute or sweeping environmental claims (e.g., "100% sustainable", "climate neutral", "carbon neutral", "fully recyclable", "biodegradable", "zero impact", "plastic-free") are "Unsupported" when no methodology, scope, or third-party standard is cited. "Verifiable" applies only to bounded measurable claims (e.g., "50% recycled plastic", "30% CO2 reduction vs 2020") that are concrete and checkable but lack a certification mark in the text.
+7. Write reasoning and evidence_points in English, regardless of the input language. Reasoning max 200 characters. Up to 3 evidence_points, each max 80 characters.
+8. Set language_detected to reflect the input text language: "de", "en", "es", or "other".
 
 Response: JSON with fields verdict, confidence, reasoning, evidence_points, language_detected.`;
 
@@ -44,7 +45,9 @@ const FEWSHOTS = [
   { role: "user", content: "70% recyceltes Plastik" },
   { role: "assistant", content: "{\"verdict\":\"Verifiable\",\"confidence\":0.8,\"reasoning\":\"Concrete percentage, in principle verifiable, but no evidence shown in the text.\",\"evidence_points\":[\"concrete figure 70%\",\"no certification mark shown\"],\"language_detected\":\"de\"}" },
   { role: "user", content: "100% biologisch abbaubar" },
-  { role: "assistant", content: "{\"verdict\":\"Verifiable\",\"confidence\":0.75,\"reasoning\":\"Concrete property claim, but no reference to a standard such as EN 13432.\",\"evidence_points\":[\"concretely worded\",\"no standard cited\"],\"language_detected\":\"de\"}" },
+  { role: "assistant", content: "{\"verdict\":\"Unsupported\",\"confidence\":0.75,\"reasoning\":\"Absolute claim without methodology or standard (e.g., EN 13432) cited.\",\"evidence_points\":[\"absolute 100% claim\",\"no standard cited\"],\"language_detected\":\"de\"}" },
+  { role: "user", content: "Carbon neutral product" },
+  { role: "assistant", content: "{\"verdict\":\"Unsupported\",\"confidence\":0.75,\"reasoning\":\"Sweeping neutrality claim with no methodology, scope, or third-party standard cited.\",\"evidence_points\":[\"absolute neutrality claim\",\"no methodology stated\",\"no standard cited\"],\"language_detected\":\"en\"}" },
   { role: "user", content: "CO2-neutral gemäß eigenem Standard" },
   { role: "assistant", content: "{\"verdict\":\"Unsupported\",\"confidence\":0.7,\"reasoning\":\"Concrete, but 'own standard' is not a recognized external reference.\",\"evidence_points\":[\"internal standard only\",\"no external testing body\"],\"language_detected\":\"de\"}" },
   { role: "user", content: "natürlich und gesund" },
