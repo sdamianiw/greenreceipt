@@ -43,6 +43,7 @@ yarn-error.*
 # GreenReceipt local env
 .env
 .env.local
+.env.production
 supabase/.env
 
 # Expo local
