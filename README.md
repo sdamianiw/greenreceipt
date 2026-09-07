@@ -64,18 +64,14 @@ Everything sensitive (`OPENAI_API_KEY`, `OPENAI_MODEL`, `SUPABASE_SERVICE_ROLE_K
 | Metric | Value |
 |---|---|
 | Edge Functions | 1 (`classify`) |
-| Edge Function size | 336 lines, 2 files (Deno/TypeScript) |
+| Edge Function size | 336 lines, one Deno/TypeScript file, zero project imports |
 | Migrations / tables | 1 / 1 (`public.scans`) |
 | Row-level security | enabled, zero anon policies (deny-all; service role only) |
 | Screens | 6 (Home, Review, Verdict, Share, History, Settings), locked, no additions |
 | `src/` size | 883 lines, 17 files |
 | Claim categories | 4 (`Vague`, `Verifiable`, `Unsupported`, `Substantiated`) |
 | UI copy | 59 lines, all in `src/locales/de.ts` |
-| Commits on `main` | 33, one atomic task each |
 | Automated tests | 0 |
-| Published eval/accuracy numbers | 0 |
-
-The last two rows aren't a gap this README is glossing over: see Limitations for what that means in practice.
 
 ## Design decisions
 
@@ -83,7 +79,7 @@ The last two rows aren't a gap this README is glossing over: see Limitations for
   `src/` is grepped for `OPENAI_API_KEY|sk-` as part of the project's own verification step (see `CLAUDE.md`), and `supabase/functions/classify/index.ts` reads the key from `Deno.env`. The React Native bundle never sees it, so a decompiled APK can't leak it.
 
 - **OCR happens on-device, not through an uploaded image.**
-  `@react-native-ml-kit/text-recognition` extracts text on the phone; `src/services/ocrNormalize.ts` collapses whitespace and strips duplicate lines before the text is sent anywhere. No packaging photo leaves the device: only the extracted text does, and the Edge Function explicitly rejects any payload shaped like an image (`grep image_url` returns nothing by design).
+  `@react-native-ml-kit/text-recognition` extracts text on the phone; `src/services/ocrNormalize.ts` collapses whitespace and strips duplicate lines before the text is sent anywhere. No packaging photo leaves the device, only the extracted text does. The Edge Function's request schema accepts text only; there is no image path in it to abuse.
 
 - **The classification prompt is fixed and few-shot, not open-ended.**
   `supabase/functions/classify/index.ts` hardcodes a 4-category rubric (Vague / Verifiable / Unsupported / Substantiated) with a conservative-bias rule ("when uncertain, downgrade") and 10 few-shot examples in German and English. It also carries an explicit forbidden-wording list (no "greenwashing", "Betrug", "illegal", "fraud", etc.), so the model can describe what a claim lacks without accusing a brand of wrongdoing.
@@ -101,13 +97,15 @@ The last two rows aren't a gap this README is glossing over: see Limitations for
 
 - **German-only UI.** All 59 lines of copy live in `src/locales/de.ts`; there's no localization layer or second language for other markets yet.
 
-- **Per-scan cost and latency scale with OpenAI usage.** The Edge Function calls `gpt-5-nano` by default, with `gpt-4.1-nano` available as a fallback via the `OPENAI_MODEL` env var. Neither has published accuracy numbers in this repo, and there's no eval harness comparing model choices against labeled claims.
+- **Published eval/accuracy numbers.** 0. There's no eval harness comparing model choices against labeled claims.
+
+- **Per-scan cost and latency scale with OpenAI usage.** The Edge Function calls `gpt-5-nano` by default, with `gpt-4.1-nano` available as a fallback via the `OPENAI_MODEL` env var.
 
 - **OCR quality depends on lighting and packaging condition.** There's no OCR-quality fallback beyond the prompt's own instruction to return `Vague` with low confidence on empty or garbled input.
 
 - **Not published to the App Store or Play Store.** `eas.json` and `app.json` are configured for Expo builds under bundle ID `com.sdamianiw.greenreceipt`, but there is no store listing or release build referenced in the repo.
 
-- **Most of the screenshots directory is debug material, not product photography.** Six of the eight files are blank-screen bug reports or home-screen icon grids; the Demo section above uses the two that actually show app UI.
+- **Only two screenshots exist, both from a dev build.** The Demo section shows everything there is; there is no polished product photography, and the classification screenshot is a single real run, not a sampled set of results.
 
 - **Single-region, single-provider dependency.** The whole classification path goes through one OpenAI model family and one Supabase project; there's no multi-provider fallback if OpenAI has an outage, only the `gpt-5-nano` → `gpt-4.1-nano` swap within OpenAI itself.
 
