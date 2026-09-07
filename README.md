@@ -1,6 +1,6 @@
 # greenreceipt
 
-A React Native app for the German market that photographs product packaging, OCRs the text on-device, and classifies each sustainability claim into one of four evidence tiers via an OpenAI-backed Supabase Edge Function.
+A React Native app for the German market. It photographs product packaging, OCRs the text on-device, and sends the claim to a Supabase Edge Function that sorts it into one of four evidence tiers.
 
 ![Expo SDK 54](https://img.shields.io/badge/Expo-SDK%2054-000020)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6)
@@ -11,7 +11,7 @@ A React Native app for the German market that photographs product packaging, OCR
 |---|---|
 | ![Kamerazugriff erforderlich](docs/img/kamerazugriff-erforderlich.jpeg) | ![Evidence card result](docs/img/evidence-card-result.jpeg) |
 
-The result screen shows a `Verifiable` verdict for a "50% recycled plastic" claim, with confidence, reasoning, evidence points, model name, and token count returned by the Edge Function. The permission screen is what a first-time user sees before the camera flow starts, and it's fully in German like the rest of the app.
+The result screen shows a `Verifiable` verdict for a "50% recycled plastic" claim, with confidence, reasoning, evidence points, model name, and token count returned by the Edge Function. The permission screen is what a first-time user sees before the camera flow starts, in German like the rest of the app.
 
 ## Architecture
 
@@ -32,11 +32,11 @@ Postgres table: public.scans
 
 The client never talks to OpenAI directly; it calls the Edge Function through the Supabase JS client (`src/services/classify.ts`), which normalizes OCR text and validates the response against a Zod schema before render. The Edge Function itself is a single Deno file with no project imports: it does its own UUID validation, rate-limit lookup, raw `fetch` to OpenAI's Responses API, and a Postgres insert, all in `supabase/functions/classify/index.ts`.
 
-Six screens make up the whole client: Home (camera), Review (editable OCR text), Verdict (the result), and stubs for Share, History, and Settings that are reserved for later phases but not yet built out.
+Six screens make up the whole client: Home (camera), Review (editable OCR text), Verdict (the result), and stubs for Share, History and Settings that later phases were meant to fill in.
 
-**Stack:** Expo SDK 54, React Native 0.81.5, React 19.1.0, TypeScript 5.9 in strict mode, `@supabase/supabase-js`, `zod` for runtime schema validation on both client and server, `@react-navigation/native-stack` for the navigator, and `@react-native-ml-kit/text-recognition` for OCR. The full dependency list is intentionally short: the project's own `CLAUDE.md` locks it to 14 packages and requires sign-off before adding a 15th.
+**Stack:** Expo SDK 54, React Native 0.81.5, React 19.1.0, TypeScript 5.9 in strict mode, `@supabase/supabase-js`, `zod` for runtime schema validation on both client and server, `@react-navigation/native-stack` for the navigator, and `@react-native-ml-kit/text-recognition` for OCR. The dependency list is short on purpose: the project's own `CLAUDE.md` locks it to 14 packages and requires sign-off before adding a 15th.
 
-Rate limiting is enforced server-side, not client-side: the Edge Function runs a `SELECT` against `scans` for the calling `device_id` before it ever calls OpenAI, and returns HTTP 429 once the daily cap is hit. That keeps the cap effective even against a modified or rebuilt client.
+Rate limiting is enforced server-side. The Edge Function runs a `SELECT` against `scans` for the calling `device_id` before it ever calls OpenAI, and returns HTTP 429 once the daily cap is hit. That keeps the cap effective even against a modified or rebuilt client.
 
 ## Quickstart
 
@@ -48,7 +48,7 @@ supabase db push             # apply supabase/migrations/20260514_init.sql
 supabase functions deploy classify   # requires OPENAI_API_KEY etc. set via `supabase secrets set`
 ```
 
-`npm run android` and `npm run ios` are also available as thin wrappers around `expo start` for platform-specific dev clients (see `package.json`). There's no build or lint script defined yet. `npx tsc --noEmit` is the closest thing to a CI gate, run manually per the project's own phase checklist.
+`npm run android` and `npm run ios` are also available as thin wrappers around `expo start` for platform-specific dev clients (see `package.json`). There is no build or lint script defined yet. `npx tsc --noEmit` is the closest thing to a CI gate, run manually per the project's own phase checklist.
 
 The client only needs two environment variables, both public by design (`.env.example`):
 
@@ -76,7 +76,7 @@ Everything sensitive (`OPENAI_API_KEY`, `OPENAI_MODEL`, `SUPABASE_SERVICE_ROLE_K
 ## Design decisions
 
 - **OpenAI key lives only in the Edge Function, not the client.**
-  `src/` is grepped for `OPENAI_API_KEY|sk-` as part of the project's own verification step (see `CLAUDE.md`), and `supabase/functions/classify/index.ts` reads the key from `Deno.env`. The React Native bundle never sees it, so a decompiled APK can't leak it.
+  `src/` is grepped for `OPENAI_API_KEY|sk-` as part of the project's own verification step (see `CLAUDE.md`), and `supabase/functions/classify/index.ts` reads the key from `Deno.env`. The React Native bundle never sees it, so a decompiled APK has nothing to leak.
 
 - **OCR happens on-device, not through an uploaded image.**
   `@react-native-ml-kit/text-recognition` extracts text on the phone; `src/services/ocrNormalize.ts` collapses whitespace and strips duplicate lines before the text is sent anywhere. No packaging photo leaves the device, only the extracted text does. The Edge Function's request schema accepts text only; there is no image path in it to abuse.
@@ -85,29 +85,29 @@ Everything sensitive (`OPENAI_API_KEY`, `OPENAI_MODEL`, `SUPABASE_SERVICE_ROLE_K
   `supabase/functions/classify/index.ts` hardcodes a 4-category rubric (Vague / Verifiable / Unsupported / Substantiated) with a conservative-bias rule ("when uncertain, downgrade") and 10 few-shot examples in German and English. It also carries an explicit forbidden-wording list (no "greenwashing", "Betrug", "illegal", "fraud", etc.), so the model can describe what a claim lacks without accusing a brand of wrongdoing.
 
 - **Claim text is never persisted, only the verdict and token count.**
-  `supabase/migrations/20260514_init.sql` defines `scans` with no `claim_text` column at all: that's a privacy choice enforced at the schema level, not something application code has to remember to respect.
+  `supabase/migrations/20260514_init.sql` defines `scans` with no `claim_text` column at all: the privacy choice is enforced at the schema level, so application code cannot forget it.
 
-- **React Native/Expo instead of a web app**, because the core interaction is the phone camera plus on-device OCR. `app.json` requests only `CAMERA` and `RECORD_AUDIO` permissions, and the Edge Function does no server-side image handling, so there's nowhere for a browser-based flow to plug in without re-adding an upload step the architecture is designed to avoid.
+- **React Native/Expo instead of a web app**, because the core interaction is the phone camera plus on-device OCR. `app.json` requests only `CAMERA` and `RECORD_AUDIO` permissions, and the Edge Function does no server-side image handling, so a browser-based flow would have to re-add the upload step this design exists to avoid.
 
-- **Rate limiting is defense-in-depth, not single-layer.** The Edge Function's pre-check against `scans` is the primary control, and the deny-all row-level security policy on the table is a second, independent barrier: even if the pre-check logic had a bug, the anon key still can't read or write the table directly.
+- **Rate limiting has two independent layers.** The Edge Function's pre-check against `scans` is the primary control, and the deny-all row-level security policy on the table sits behind it: if the pre-check logic had a bug, the anon key still could not read or write the table directly.
 
 ## Limitations
 
 - **No automated test suite.** No Jest config, no `__tests__` directories, and no `test` script in `package.json`. Verification is manual and command-based, tracked in `.specs/phases/01-core-loop/VERIFY.md`, not enforced by CI.
 
-- **German-only UI.** All 59 lines of copy live in `src/locales/de.ts`; there's no localization layer or second language for other markets yet.
+- **German-only UI.** All 59 lines of copy live in `src/locales/de.ts`; there is no localization layer and no second language yet.
 
-- **Published eval/accuracy numbers.** 0. There's no eval harness comparing model choices against labeled claims.
+- **Published eval/accuracy numbers.** 0. There is no eval harness comparing model choices against labeled claims.
 
 - **Per-scan cost and latency scale with OpenAI usage.** The Edge Function calls `gpt-5-nano` by default, with `gpt-4.1-nano` available as a fallback via the `OPENAI_MODEL` env var.
 
-- **OCR quality depends on lighting and packaging condition.** There's no OCR-quality fallback beyond the prompt's own instruction to return `Vague` with low confidence on empty or garbled input.
+- **OCR quality depends on lighting and packaging condition.** There is no OCR-quality fallback beyond the prompt's own instruction to return `Vague` with low confidence on empty or garbled input.
 
 - **Not published to the App Store or Play Store.** `eas.json` and `app.json` are configured for Expo builds under bundle ID `com.sdamianiw.greenreceipt`, but there is no store listing or release build referenced in the repo.
 
 - **Only two screenshots exist, both from a dev build.** The Demo section shows everything there is; there is no polished product photography, and the classification screenshot is a single real run, not a sampled set of results.
 
-- **Single-region, single-provider dependency.** The whole classification path goes through one OpenAI model family and one Supabase project; there's no multi-provider fallback if OpenAI has an outage, only the `gpt-5-nano` → `gpt-4.1-nano` swap within OpenAI itself.
+- **Single-region, single-provider dependency.** The whole classification path goes through one OpenAI model family and one Supabase project; there is no multi-provider fallback if OpenAI has an outage, only the `gpt-5-nano` → `gpt-4.1-nano` swap within OpenAI itself.
 
 ## License
 
