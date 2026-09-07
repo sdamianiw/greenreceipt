@@ -34,7 +34,7 @@ The client never talks to OpenAI directly; it calls the Edge Function through th
 
 Six screens make up the whole client: Home (camera), Review (editable OCR text), Verdict (the result), and stubs for Share, History and Settings that later phases were meant to fill in.
 
-**Stack:** Expo SDK 54, React Native 0.81.5, React 19.1.0, TypeScript 5.9 in strict mode, `@supabase/supabase-js`, `zod` for runtime schema validation on both client and server, `@react-navigation/native-stack` for the navigator, and `@react-native-ml-kit/text-recognition` for OCR. The dependency list is short on purpose: the project's own `CLAUDE.md` locks it to 14 packages and requires sign-off before adding a 15th.
+**Stack:** Expo SDK 54, React Native 0.81.5, React 19.1.0, TypeScript 5.9 in strict mode, `@supabase/supabase-js`, `zod` for runtime schema validation on both client and server, `@react-navigation/native-stack` for the navigator, and `@react-native-ml-kit/text-recognition` for OCR. The dependency list is short on purpose: `CLAUDE.md` whitelists the stack, and anything outside it needs sign-off. `package.json` currently lists 20 runtime dependencies and 2 dev.
 
 Rate limiting is enforced server-side. The Edge Function runs a `SELECT` against `scans` for the calling `device_id` before it ever calls OpenAI, and returns HTTP 429 once the daily cap is hit. That keeps the cap effective even against a modified or rebuilt client.
 
@@ -75,13 +75,13 @@ Everything sensitive (`OPENAI_API_KEY`, `OPENAI_MODEL`, `SUPABASE_SERVICE_ROLE_K
 
 ## Design decisions
 
-- **OpenAI key lives only in the Edge Function, not the client.**
+- **The OpenAI key lives only in the Edge Function.**
   `src/` is grepped for `OPENAI_API_KEY|sk-` as part of the project's own verification step (see `CLAUDE.md`), and `supabase/functions/classify/index.ts` reads the key from `Deno.env`. The React Native bundle never sees it, so a decompiled APK has nothing to leak.
 
 - **OCR happens on-device, not through an uploaded image.**
   `@react-native-ml-kit/text-recognition` extracts text on the phone; `src/services/ocrNormalize.ts` collapses whitespace and strips duplicate lines before the text is sent anywhere. No packaging photo leaves the device, only the extracted text does. The Edge Function's request schema accepts text only; there is no image path in it to abuse.
 
-- **The classification prompt is fixed and few-shot, not open-ended.**
+- **The classification prompt is fixed, with ten few-shot examples.**
   `supabase/functions/classify/index.ts` hardcodes a 4-category rubric (Vague / Verifiable / Unsupported / Substantiated) with a conservative-bias rule ("when uncertain, downgrade") and 10 few-shot examples in German and English. It also carries an explicit forbidden-wording list (no "greenwashing", "Betrug", "illegal", "fraud", etc.), so the model can describe what a claim lacks without accusing a brand of wrongdoing.
 
 - **Claim text is never persisted, only the verdict and token count.**
@@ -111,4 +111,4 @@ Everything sensitive (`OPENAI_API_KEY`, `OPENAI_MODEL`, `SUPABASE_SERVICE_ROLE_K
 
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE).
